@@ -1,0 +1,112 @@
+# Ruby
+# Package your Ruby project.
+# Add steps that install rails, analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/ruby
+
+trigger:
+- main
+
+pool:
+  #vmImage: 'ubuntu-latest'
+  name: 'developers' #todo Install Ruby
+  
+resources:
+  repositories:
+  - repository: groupe-duperche # The name used to reference this repository in the checkout step
+    type: github
+    endpoint: github-repo
+    name: groupe-duperche/groupe-duperche.github.io
+
+
+stages:
+- stage: Build
+  jobs:
+  - job: Build
+    steps:
+    # TODO CHANGE after update pool
+    #- task: UseRubyVersion@0
+    #  displayName: "Use Ruby 2.5"
+    #  inputs:
+    #    versionSpec: '>= 2.5'
+
+    - script: gem install jekyll bundler
+      displayName: 'Install jekyll bundler'
+    
+    - script: bundle install
+      displayName: 'Jekyll bundle install'
+
+    - script: jekyll build
+      displayName: 'Jekyll build'        
+    
+    - task: CopyFiles@2
+      displayName: 'Copy Files to: $(Build.ArtifactStagingDirectory)'
+      inputs:
+        SourceFolder: '_site'
+        TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        artifactName: site
+
+- stage: DeployToGithub
+  jobs:
+  - deployment: DeployWeb
+    displayName: Deploy to github
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: none
+
+          - checkout: groupe-duperche
+            clean: true
+            persistCredentials: true
+
+          - script: |
+              git config --global user.email "mathieuduperche@gmail.com"
+              git config --global user.name "Mathieu Duperche"
+            displayName: "Init git config"          
+
+          - script: |
+              git status
+              git checkout -b feature/$(Build.BuildNumber)
+            displayName: "Create new branch"
+            #workingDirectory: $(Build.SourcesDirectory)            
+
+          - task: DownloadPipelineArtifact@2
+            displayName: "Download artifact in new branch"
+            inputs:
+              artifact: site
+              source: current
+              path: $(Build.SourcesDirectory)
+
+          - script: dir           
+            workingDirectory: $(Build.SourcesDirectory)
+            displayName: "Debug"
+
+          - script: git add .
+            workingDirectory: $(Build.SourcesDirectory)
+            displayName: "git add ."
+            
+          - script: git commit -m "$(Build.BuildNumber)"
+            workingDirectory: $(Build.SourcesDirectory)
+            displayName: "git commit"
+
+          - script: git push --set-upstream origin feature/$(Build.BuildNumber)
+            workingDirectory: $(Build.SourcesDirectory)
+            displayName: "git push"
+
+          #- script: gem install github
+          #  workingDirectory: $(Build.SourcesDirectory)
+          #  displayName: "Install github cli"
+          
+          #INSTALL BEFORE PIPELINE DON'T HAVE ACCESS
+          #- script: choco install gh --force 
+          #  displayName: "git push"
+
+          - script: |
+              gh pr create --base main --title "Az DevOps version $(Build.BuildNumber)" --reviewer mathieuduperche
+            workingDirectory: $(Build.SourcesDirectory)
+            displayName: "Create Pull Request"
