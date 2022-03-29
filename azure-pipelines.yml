@@ -106,7 +106,7 @@ stages:
           #- script: choco install gh --force 
           #  displayName: "git push"
 
-          - script: |
-              gh pr create --base main --title "Az DevOps version $(Build.BuildNumber)" --reviewer mathieuduperche
-            workingDirectory: $(Build.SourcesDirectory)
-            displayName: "Create Pull Request"
+          #- script: |
+          #    gh pr create --base main --title "Az DevOps version $(Build.BuildNumber)" --reviewer mathieuduperche
+          #  workingDirectory: $(Build.SourcesDirectory)
+          #  displayName: "Create Pull Request"
