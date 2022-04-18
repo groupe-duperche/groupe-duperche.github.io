@@ -54,6 +54,8 @@ stages:
   - deployment: DeployWeb
     displayName: Deploy to github
     environment: 'production'
+    workspace:
+      clean: all
     strategy:
       runOnce:
         deploy:
